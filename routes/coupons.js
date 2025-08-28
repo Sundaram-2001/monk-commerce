@@ -7,8 +7,9 @@ router.get("/", (req, res) => {
   res.send("hello, from monk commerce!");
 });
 
+//creating new coupon
 router.post("/coupons", async (req, res) => {
-  const { code, type, description, usage_limit, threshold, discount_percent } = req.body;
+  const { code, type, description, usage_limit,discount_type,discount_value,threshold } = req.body;
 
   try {
     // inserting into coupons table
@@ -19,6 +20,9 @@ router.post("/coupons", async (req, res) => {
         type,
         description,
         usage_limit,
+        discount_type,
+        discount_value,
+        threshold
       })
       .select();
 
@@ -26,30 +30,10 @@ router.post("/coupons", async (req, res) => {
       console.error(error);
       return res.status(500).json({ message: "Please try later!" });
     }
-
-    const coupon = data[0]; // inserted coupon row
-
-    //  inserting into specific type of coupon table
-    if (type === "cart-wise") {
-      const { error: cwError } = await supabase
-        .from("cart_wise_coupons")
-        .insert({
-          coupon_id: coupon.id,
-          threshold: threshold,
-          discount_percent: discount_percent,
-        });
-
-      if (cwError) {
-        console.error(cwError);
-        return res.status(500).json({ message: "Failed to insert cart-wise coupon details" });
-      }
-    }
-
     
 
     return res.status(200).json({
       message: "Coupon added successfully",
-      coupon,
     });
   } catch (err) {
     console.error(err);
@@ -80,6 +64,7 @@ router.post("/add-product",async (req,res)=>{
     }
 })
 
+//fetch all coupons
 router.get("/coupons",async (req,res)=>{
     try {
         const {data,error}=await supabase.from("coupons")
@@ -96,6 +81,8 @@ router.get("/coupons",async (req,res)=>{
         res.status(500).json({"message":"Unexpected error, comeback again later!!"})
     }
 })
+
+//fetch coupon by id
 router.get("/coupon/:id", async (req, res) => {
     const id = req.params.id;
 
@@ -126,4 +113,50 @@ router.get("/coupon/:id", async (req, res) => {
     }
 });
 
+//deleting a coupon
+
+router.delete("/delete-coupon/:id",async(req,res)=>{
+  const id = parseInt(req.params.id, 10);
+  console.log("Deleting coupon with id:", id);
+  try {
+    const {data,error}=await supabase.from("coupons")
+    .delete()
+    .eq("id",id)
+    .select()
+    if(error){
+      console.error(error)
+      return res.status(400).json({message:error.message})
+    }
+    console.log(data)
+    if (data.length === 0) {
+      return res.status(404).json({ message: "Coupon not found" });
+    }
+    return res.status(200).json({"message":"Coupon deleted successfully!!!"})
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({"message":"Unexpected error,Kindly contact the developer!!!!"})
+  }
+})
+
+//updating a coupon
+router.put("/update-coupon/:id",async(req,res)=>{
+  const id=parseInt(req.params.id)
+  const updateFields=req.body;
+  try {
+    const {data,error}=await supabase.from("coupons")
+    .update(updateFields)
+    .eq("id",id)
+    .select()
+    if(error){
+      return res.status(400).json({message:error.message})
+    }
+    if(!data || data.length===0){
+      return res.status(404).json({"message":"soupon not found!!!!"})
+    }
+    return res.status(200).json({"message":"coupon updated successfully!!"})
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({"message":"Unexpected error, kindly contact the developer!!!!"})
+  }
+})
 export default router;
